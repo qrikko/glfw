@@ -5,7 +5,7 @@ bin-int/
 
 # Netbeans
 *Makefile
-*/nbproject/
+nbproject/
 
 # Visual Studio clutter
 _ReSharper*
