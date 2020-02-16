@@ -1,6 +1,7 @@
 project "glfw"
 	kind "staticLib"
 	language "C"
+	staticruntime "on"
 
 	targetdir ("bin/" .. outputdir .. "/")
 	objdir ("bin-int/" .. outputdir .. "/") 
@@ -17,12 +18,16 @@ project "glfw"
 		"src/window.c"
 	}
 
-	cppdialect "C++14"
+	filter "configurations:Debug"
+		runtime "Debug"
+		symbols "on"
+	filter "configurations:Release"
+		runtime "Release"
+		optimize "on"
 
 	filter "system:linux"
-		buildoptions { "-fPIC", "-std=c11", "-lgdi32" }
 		systemversion "latest"
-		staticruntime "On"
+		buildoptions { "-fPIC", "-lgdi32" }
 
 		files {
 			"src/x11_init.c",
@@ -43,10 +48,7 @@ project "glfw"
 		}
 
 	filter "system:windows"
-		buildoptions { "-std=c11", "-lgdi32" }
 		systemversion "latest"
-		staticruntime "On"
-
 		files {
 			"src/win32_init.c",
 			"src/win32_joystick.c",
@@ -63,6 +65,3 @@ project "glfw"
 			"_GLFW_WIN32",
 			"_CRT_SECURE_NO_WARNINGS"
 		}
-
-	filter { "system:windows", "configurations:Release" }
-		buildoptions "/MT"
