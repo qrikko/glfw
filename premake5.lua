@@ -27,6 +27,7 @@ project "glfw"
 
 	filter "system:linux"
 		systemversion "latest"
+		-- should these be removed?
 		buildoptions { "-fPIC", "-lgdi32" }
 
 		files {
