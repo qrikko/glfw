@@ -7,6 +7,12 @@ bin-int/
 *Makefile
 nbproject/
 
+# Codelite
+compile_flags.txt
+glfw.mk
+glfw.project
+glfw.txt
+
 # Visual Studio clutter
 _ReSharper*
 *.sdf
