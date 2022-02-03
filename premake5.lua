@@ -2,6 +2,7 @@ project "glfw"
 	kind "staticLib"
 	language "C"
 	staticruntime "on"
+	toolset "clang"
 
 	targetdir ("bin/" .. outputdir .. "/")
 	objdir ("bin-int/" .. outputdir .. "/") 
