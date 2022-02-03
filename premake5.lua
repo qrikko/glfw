@@ -4,14 +4,15 @@ project "glfw"
 	staticruntime "on"
 	toolset "clang"
 
-	targetdir ("bin/" .. outputdir .. "/")
-	objdir ("bin-int/" .. outputdir .. "/") 
+	targetdir (engine_root .. "/lib/" .. outputdir)
+	objdir (engine_root .. "/bin-int/" .. outputdir .. "/%{prj.name}") 
 
 	files {
 		"include/GLFW/glfw3.h",
 		"include/GLFW/glfw3native.h",
 		"src/glfw_config.h",
-		"src/context.c",
+--		"src/context.c",
+		"src/glfw.rc.in",
 		"src/init.c",
 		"src/input.c",
 		"src/monitor.c",
@@ -29,7 +30,7 @@ project "glfw"
 	filter "system:linux"
 		systemversion "latest"
 		-- should these be removed?
-		buildoptions { "-fPIC", "-lgdi32" }
+		buildoptions { "-fPIC" }
 
 		files {
 			"src/x11_init.c",
