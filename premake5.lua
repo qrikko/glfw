@@ -32,14 +32,10 @@ project "glfw"
 		buildoptions { "-fPIC" }
 
 		files {
-			"src/egl_context.*",
-			"src/glfw.*",
-			"src/init.*",
-			"src/internal.*",
-			"src/platform.*",
-			"src/posix_module.*",
 			"src/null_*",
 
+			"src/platform.c",
+			"src/posix_module.c",
 			"src/x11_init.c",
 			"src/linux_joystick.c",
 			"src/x11_monitor.c",
@@ -48,7 +44,7 @@ project "glfw"
 			"src/x11_window.c",
 			"src/x11_platform.h",
 			"src/glx_context.c",
-		--	"src/egl_context.c",
+			"src/egl_context.c",
 			"src/osmesa_context.c",
 			"src/xkb_unicode.c"
 		}
