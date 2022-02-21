@@ -17,12 +17,15 @@ project "glfw"
 		"src/monitor.c",
 		"src/vulkan.c",
 		"src/window.c",
+		-- building glad with glfw
+		"%{dependency.glad}/src/glad.c",
+		"%{dependency.glad}/include/glad/glad.h",
+		"%{dependency.glad}/include/KHR/khrplatform.h"
 	}
 
 	includedirs {
-		"../glad/include/"
+		"%{dependency.glad}/include"
 	}
-	--links { "glad", "GL" }
 
 	filter "configurations:Debug"
 		runtime "Debug"
