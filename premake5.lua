@@ -2,7 +2,7 @@ project "glfw"
 	kind "staticLib"
 	language "C"
 	staticruntime "on"
-	toolset "clang"
+	tool()
 
 	targetdir (engine_root .. "/lib/" .. outputdir)
 	objdir (engine_root .. "/bin-int/" .. outputdir .. "/%{prj.name}") 
@@ -16,8 +16,13 @@ project "glfw"
 		"src/input.c",
 		"src/monitor.c",
 		"src/vulkan.c",
-		"src/window.c"
+		"src/window.c",
 	}
+
+	includedirs {
+		"../glad/include/"
+	}
+	--links { "glad", "GL" }
 
 	filter "configurations:Debug"
 		runtime "Debug"
