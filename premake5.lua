@@ -5,7 +5,7 @@ project "glfw"
 	tool()
 
 	targetdir (engine_root .. "/lib/" .. outputdir)
-	objdir (engine_root .. "/bin-int/" .. outputdir .. "/%{prj.name}") 
+	objdir (engine_root .. "/bin-int/" .. outputdir .. "glfw")
 
 	files {
 		"include/GLFW/glfw3.h",
@@ -18,13 +18,13 @@ project "glfw"
 		"src/vulkan.c",
 		"src/window.c",
 		-- building glad with glfw
-		"%{dependency.glad}/src/glad.c",
-		"%{dependency.glad}/include/glad/glad.h",
-		"%{dependency.glad}/include/KHR/khrplatform.h"
+		dependency.glad .. "/src/glad.c",
+		dependency.glad .. "/include/glad/glad.h",
+		dependency.glad .. "/include/KHR/khrplatform.h"
 	}
 
 	includedirs {
-		"%{dependency.glad}/include"
+		dependency.glad .. "/include"
 	}
 
 	filter "configurations:Debug"
