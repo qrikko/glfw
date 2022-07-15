@@ -533,59 +533,26 @@ static void maximizeWindowManually(_GLFWwindow* window)
                  SWP_NOACTIVATE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
-// Window callback function (handles window messages)
+// Window procedure for user-created windows
 //
 static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     _GLFWwindow* window = GetPropW(hWnd, L"GLFW");
     if (!window)
     {
-        // This is the message handling for the hidden helper window
-        // and for a regular window during its initial creation
-
-        switch (uMsg)
+        if (uMsg == WM_NCCREATE)
         {
-            case WM_NCCREATE:
+            if (_glfwIsWindows10Version1607OrGreaterWin32())
             {
-                if (_glfwIsWindows10Version1607OrGreaterWin32())
-                {
-                    const CREATESTRUCTW* cs = (const CREATESTRUCTW*) lParam;
-                    const _GLFWwndconfig* wndconfig = cs->lpCreateParams;
+                const CREATESTRUCTW* cs = (const CREATESTRUCTW*) lParam;
+                const _GLFWwndconfig* wndconfig = cs->lpCreateParams;
 
-                    // On per-monitor DPI aware V1 systems, only enable
-                    // non-client scaling for windows that scale the client area
-                    // We need WM_GETDPISCALEDSIZE from V2 to keep the client
-                    // area static when the non-client area is scaled
-                    if (wndconfig && wndconfig->scaleToMonitor)
-                        EnableNonClientDpiScaling(hWnd);
-                }
-
-                break;
-            }
-
-            case WM_DISPLAYCHANGE:
-                _glfwPollMonitorsWin32();
-                break;
-
-            case WM_DEVICECHANGE:
-            {
-                if (!_glfw.joysticksInitialized)
-                    break;
-
-                if (wParam == DBT_DEVICEARRIVAL)
-                {
-                    DEV_BROADCAST_HDR* dbh = (DEV_BROADCAST_HDR*) lParam;
-                    if (dbh && dbh->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
-                        _glfwDetectJoystickConnectionWin32();
-                }
-                else if (wParam == DBT_DEVICEREMOVECOMPLETE)
-                {
-                    DEV_BROADCAST_HDR* dbh = (DEV_BROADCAST_HDR*) lParam;
-                    if (dbh && dbh->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
-                        _glfwDetectJoystickDisconnectionWin32();
-                }
-
-                break;
+                // On per-monitor DPI aware V1 systems, only enable
+                // non-client scaling for windows that scale the client area
+                // We need WM_GETDPISCALEDSIZE from V2 to keep the client
+                // area static when the non-client area is scaled
+                if (wndconfig && wndconfig->scaleToMonitor)
+                    EnableNonClientDpiScaling(hWnd);
             }
         }
 
@@ -759,6 +726,10 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             // HACK: Ctrl+Pause has a different scancode than just Pause
             if (scancode == 0x146)
                 scancode = 0x45;
+
+            // HACK: CJK IME sets the extended bit for right Shift
+            if (scancode == 0x136)
+                scancode = 0x36;
 
             key = _glfw.win32.keycodes[scancode];
 
@@ -1282,17 +1253,51 @@ static int createNativeWindow(_GLFWwindow* window,
     DWORD style = getWindowStyle(window);
     DWORD exStyle = getWindowExStyle(window);
 
+    if (!_glfw.win32.mainWindowClass)
+    {
+        WNDCLASSEXW wc = { sizeof(wc) };
+        wc.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+        wc.lpfnWndProc   = windowProc;
+        wc.hInstance     = _glfw.win32.instance;
+        wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
+#if defined(_GLFW_WNDCLASSNAME)
+        wc.lpszClassName = _GLFW_WNDCLASSNAME;
+#else
+        wc.lpszClassName = L"GLFW30";
+#endif
+        // Load user-provided icon if available
+        wc.hIcon = LoadImageW(GetModuleHandleW(NULL),
+                              L"GLFW_ICON", IMAGE_ICON,
+                              0, 0, LR_DEFAULTSIZE | LR_SHARED);
+        if (!wc.hIcon)
+        {
+            // No user-provided icon found, load default icon
+            wc.hIcon = LoadImageW(NULL,
+                                  IDI_APPLICATION, IMAGE_ICON,
+                                  0, 0, LR_DEFAULTSIZE | LR_SHARED);
+        }
+
+        _glfw.win32.mainWindowClass = RegisterClassExW(&wc);
+        if (!_glfw.win32.mainWindowClass)
+        {
+            _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
+                                 "Win32: Failed to register window class");
+            return GLFW_FALSE;
+        }
+    }
+
     if (window->monitor)
     {
-        GLFWvidmode mode;
+        MONITORINFO mi = { sizeof(mi) };
+        GetMonitorInfoW(window->monitor->win32.handle, &mi);
 
         // NOTE: This window placement is temporary and approximate, as the
         //       correct position and size cannot be known until the monitor
         //       video mode has been picked in _glfwSetVideoModeWin32
-        _glfwGetMonitorPosWin32(window->monitor, &xpos, &ypos);
-        _glfwGetVideoModeWin32(window->monitor, &mode);
-        fullWidth  = mode.width;
-        fullHeight = mode.height;
+        xpos = mi.rcMonitor.left;
+        ypos = mi.rcMonitor.top;
+        fullWidth  = mi.rcMonitor.right - mi.rcMonitor.left;
+        fullHeight = mi.rcMonitor.bottom - mi.rcMonitor.top;
     }
     else
     {
@@ -1314,7 +1319,7 @@ static int createNativeWindow(_GLFWwindow* window,
         return GLFW_FALSE;
 
     window->win32.handle = CreateWindowExW(exStyle,
-                                           _GLFW_WNDCLASSNAME,
+                                           MAKEINTATOM(_glfw.win32.mainWindowClass),
                                            wideTitle,
                                            style,
                                            xpos, ypos,
@@ -1419,53 +1424,10 @@ static int createNativeWindow(_GLFWwindow* window,
     return GLFW_TRUE;
 }
 
-// Registers the GLFW window class
-//
-GLFWbool _glfwRegisterWindowClassWin32(void)
-{
-    WNDCLASSEXW wc;
-
-    ZeroMemory(&wc, sizeof(wc));
-    wc.cbSize        = sizeof(wc);
-    wc.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc.lpfnWndProc   = (WNDPROC) windowProc;
-    wc.hInstance     = _glfw.win32.instance;
-    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
-    wc.lpszClassName = _GLFW_WNDCLASSNAME;
-
-    // Load user-provided icon if available
-    wc.hIcon = LoadImageW(GetModuleHandleW(NULL),
-                          L"GLFW_ICON", IMAGE_ICON,
-                          0, 0, LR_DEFAULTSIZE | LR_SHARED);
-    if (!wc.hIcon)
-    {
-        // No user-provided icon found, load default icon
-        wc.hIcon = LoadImageW(NULL,
-                              IDI_APPLICATION, IMAGE_ICON,
-                              0, 0, LR_DEFAULTSIZE | LR_SHARED);
-    }
-
-    if (!RegisterClassExW(&wc))
-    {
-        _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
-                             "Win32: Failed to register window class");
-        return GLFW_FALSE;
-    }
-
-    return GLFW_TRUE;
-}
-
-// Unregisters the GLFW window class
-//
-void _glfwUnregisterWindowClassWin32(void)
-{
-    UnregisterClassW(_GLFW_WNDCLASSNAME, _glfw.win32.instance);
-}
-
-int _glfwCreateWindowWin32(_GLFWwindow* window,
-                           const _GLFWwndconfig* wndconfig,
-                           const _GLFWctxconfig* ctxconfig,
-                           const _GLFWfbconfig* fbconfig)
+GLFWbool _glfwCreateWindowWin32(_GLFWwindow* window,
+                                const _GLFWwndconfig* wndconfig,
+                                const _GLFWctxconfig* ctxconfig,
+                                const _GLFWfbconfig* fbconfig)
 {
     if (!createNativeWindow(window, wndconfig, fbconfig))
         return GLFW_FALSE;
@@ -1493,7 +1455,13 @@ int _glfwCreateWindowWin32(_GLFWwindow* window,
             if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
                 return GLFW_FALSE;
         }
+
+        if (!_glfwRefreshContextAttribs(window, ctxconfig))
+            return GLFW_FALSE;
     }
+
+    if (wndconfig->mousePassthrough)
+        _glfwSetWindowMousePassthroughWin32(window, GLFW_TRUE);
 
     if (window->monitor)
     {
@@ -1501,6 +1469,18 @@ int _glfwCreateWindowWin32(_GLFWwindow* window,
         _glfwFocusWindowWin32(window);
         acquireMonitor(window);
         fitToMonitor(window);
+
+        if (wndconfig->centerCursor)
+            _glfwCenterCursorInContentArea(window);
+    }
+    else
+    {
+        if (wndconfig->visible)
+        {
+            _glfwShowWindowWin32(window);
+            if (wndconfig->focused)
+                _glfwFocusWindowWin32(window);
+        }
     }
 
     return GLFW_TRUE;
@@ -1881,32 +1861,32 @@ void _glfwSetWindowMonitorWin32(_GLFWwindow* window,
     }
 }
 
-int _glfwWindowFocusedWin32(_GLFWwindow* window)
+GLFWbool _glfwWindowFocusedWin32(_GLFWwindow* window)
 {
     return window->win32.handle == GetActiveWindow();
 }
 
-int _glfwWindowIconifiedWin32(_GLFWwindow* window)
+GLFWbool _glfwWindowIconifiedWin32(_GLFWwindow* window)
 {
     return IsIconic(window->win32.handle);
 }
 
-int _glfwWindowVisibleWin32(_GLFWwindow* window)
+GLFWbool _glfwWindowVisibleWin32(_GLFWwindow* window)
 {
     return IsWindowVisible(window->win32.handle);
 }
 
-int _glfwWindowMaximizedWin32(_GLFWwindow* window)
+GLFWbool _glfwWindowMaximizedWin32(_GLFWwindow* window)
 {
     return IsZoomed(window->win32.handle);
 }
 
-int _glfwWindowHoveredWin32(_GLFWwindow* window)
+GLFWbool _glfwWindowHoveredWin32(_GLFWwindow* window)
 {
     return cursorInContentArea(window);
 }
 
-int _glfwFramebufferTransparentWin32(_GLFWwindow* window)
+GLFWbool _glfwFramebufferTransparentWin32(_GLFWwindow* window)
 {
     BOOL composition, opaque;
     DWORD color;
@@ -2190,9 +2170,9 @@ int _glfwGetKeyScancodeWin32(int key)
     return _glfw.win32.scancodes[key];
 }
 
-int _glfwCreateCursorWin32(_GLFWcursor* cursor,
-                           const GLFWimage* image,
-                           int xhot, int yhot)
+GLFWbool _glfwCreateCursorWin32(_GLFWcursor* cursor,
+                                const GLFWimage* image,
+                                int xhot, int yhot)
 {
     cursor->win32.handle = (HCURSOR) createIcon(image, xhot, yhot, GLFW_FALSE);
     if (!cursor->win32.handle)
@@ -2201,7 +2181,7 @@ int _glfwCreateCursorWin32(_GLFWcursor* cursor,
     return GLFW_TRUE;
 }
 
-int _glfwCreateStandardCursorWin32(_GLFWcursor* cursor, int shape)
+GLFWbool _glfwCreateStandardCursorWin32(_GLFWcursor* cursor, int shape)
 {
     int id = 0;
 
@@ -2409,9 +2389,9 @@ void _glfwGetRequiredInstanceExtensionsWin32(char** extensions)
     extensions[1] = "VK_KHR_win32_surface";
 }
 
-int _glfwGetPhysicalDevicePresentationSupportWin32(VkInstance instance,
-                                                   VkPhysicalDevice device,
-                                                   uint32_t queuefamily)
+GLFWbool _glfwGetPhysicalDevicePresentationSupportWin32(VkInstance instance,
+                                                        VkPhysicalDevice device,
+                                                        uint32_t queuefamily)
 {
     PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR
         vkGetPhysicalDeviceWin32PresentationSupportKHR =

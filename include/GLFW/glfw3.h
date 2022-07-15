@@ -262,13 +262,12 @@ extern "C" {
  /* We are building GLFW as a Win32 DLL */
  #define GLFWAPI __declspec(dllexport)
 #elif defined(_WIN32) && defined(GLFW_DLL)
- /* We are calling GLFW as a Win32 DLL */
+ /* We are calling a GLFW Win32 DLL */
  #define GLFWAPI __declspec(dllimport)
 #elif defined(__GNUC__) && defined(_GLFW_BUILD_DLL)
- /* We are building GLFW as a shared / dynamic library */
+ /* We are building GLFW as a Unix shared library */
  #define GLFWAPI __attribute__((visibility("default")))
 #else
- /* We are building or calling GLFW as a static library */
  #define GLFWAPI
 #endif
 
@@ -3672,8 +3671,9 @@ GLFWAPI void glfwSetWindowOpacity(GLFWwindow* window, float opacity);
  *  previously restored.  If the window is already iconified, this function does
  *  nothing.
  *
- *  If the specified window is a full screen window, the original monitor
- *  resolution is restored until the window is restored.
+ *  If the specified window is a full screen window, GLFW restores the original
+ *  video mode of the monitor.  The window's desired video mode is set again
+ *  when the window is restored.
  *
  *  @param[in] window The window to iconify.
  *
@@ -3703,8 +3703,8 @@ GLFWAPI void glfwIconifyWindow(GLFWwindow* window);
  *  (minimized) or maximized.  If the window is already restored, this function
  *  does nothing.
  *
- *  If the specified window is a full screen window, the resolution chosen for
- *  the window is restored on the selected monitor.
+ *  If the specified window is an iconified full screen window, its desired
+ *  video mode is set again for its monitor when the window is restored.
  *
  *  @param[in] window The window to restore.
  *
@@ -3971,6 +3971,9 @@ GLFWAPI void glfwSetWindowMonitor(GLFWwindow* window, GLFWmonitor* monitor, int 
  *  attributes so you cannot use a return value of zero as an indication of
  *  errors.  However, this function should not fail as long as it is passed
  *  valid arguments and the library has been [initialized](@ref intro_init).
+ *
+ *  @remark @wayland The Wayland protocol provides no way to check whether a
+ *  window is iconfied, so @ref GLFW_ICONIFIED always returns `GLFW_FALSE`.
  *
  *  @thread_safety This function must only be called from the main thread.
  *
@@ -4731,8 +4734,7 @@ GLFWAPI int glfwGetKeyScancode(int key);
  *
  *  This function returns the last state reported for the specified key to the
  *  specified window.  The returned state is one of `GLFW_PRESS` or
- *  `GLFW_RELEASE`.  The higher-level action `GLFW_REPEAT` is only reported to
- *  the key callback.
+ *  `GLFW_RELEASE`.  The action `GLFW_REPEAT` is only reported to the key callback.
  *
  *  If the @ref GLFW_STICKY_KEYS input mode is enabled, this function returns
  *  `GLFW_PRESS` the first time you call it for a key that was pressed, even if
@@ -6384,6 +6386,7 @@ GLFWAPI VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow* window
  */
 #ifndef GLAPIENTRY
  #define GLAPIENTRY APIENTRY
+ #define GLFW_GLAPIENTRY_DEFINED
 #endif
 
 /* -------------------- END SYSTEM/COMPILER SPECIFIC --------------------- */
