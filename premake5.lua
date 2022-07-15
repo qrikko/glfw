@@ -5,7 +5,7 @@ project "glfw"
 	tool()
 
 	targetdir (engine_root .. "/lib/" .. outputdir)
-	objdir (engine_root .. "/bin-int/" .. outputdir .. "glfw")
+	objdir (engine_root .. "/bin-int/" .. outputdir)
 
 	files {
 		"include/GLFW/glfw3.h",
