@@ -1,11 +1,12 @@
 project "glfw"
 	kind "staticLib"
-	language "C"
-	staticruntime "on"
-	tool()
+	language (engine.compiler.language)
+	toolset (engine.compiler.toolset)
 
-	targetdir (engine_root .. "/lib/" .. outputdir)
-	objdir (engine_root .. "/bin-int/" .. outputdir)
+	targetdir (engine.lib)
+	objdir (engine.intermediate)
+
+	staticruntime "on"
 
 	files {
 		"include/GLFW/glfw3.h",
@@ -18,13 +19,13 @@ project "glfw"
 		"src/vulkan.c",
 		"src/window.c",
 		-- building glad with glfw
-		dependency.glad .. "/src/glad.c",
-		dependency.glad .. "/include/glad/glad.h",
-		dependency.glad .. "/include/KHR/khrplatform.h"
+		engine.dependency.glad .. "/src/glad.c",
+		engine.dependency.glad .. "/include/glad/glad.h",
+		engine.dependency.glad .. "/include/KHR/khrplatform.h"
 	}
 
 	includedirs {
-		dependency.glad .. "/include"
+		engine.dependency.glad .. "/include"
 	}
 
 	filter "configurations:Debug"
