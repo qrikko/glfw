@@ -1,4 +1,4 @@
-project "glfw"
+project "glfw3"
 	kind "staticLib"
 	language (engine.compiler.language)
 	toolset (engine.compiler.toolset)
@@ -18,6 +18,7 @@ project "glfw"
 		"src/monitor.c",
 		"src/vulkan.c",
 		"src/window.c",
+        "src/null_*.c",
 		-- building glad with glfw
 		engine.dependency.glad .. "/src/glad.c",
 		engine.dependency.glad .. "/include/glad/glad.h",
@@ -27,13 +28,14 @@ project "glfw"
 	includedirs {
 		engine.dependency.glad .. "/include"
 	}
-
-	filter "configurations:Debug"
+	
+    filter "configurations:Debug"
 		runtime "Debug"
 		symbols "on"
 	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
+
 
 	filter "system:linux"
 		systemversion "latest"
@@ -41,25 +43,28 @@ project "glfw"
 		buildoptions { "-fPIC" }
 
 		files {
-			"src/null_*",
-
-			"src/platform.c",
-			"src/posix_module.c",
-			"src/x11_init.c",
-			"src/linux_joystick.c",
-			"src/x11_monitor.c",
-			"src/posix_time.c",
-			"src/posix_thread.c",
-			"src/x11_window.c",
-			"src/x11_platform.h",
-			"src/glx_context.c",
-			"src/egl_context.c",
-			"src/osmesa_context.c",
-			"src/xkb_unicode.c"
+			"src/linux_joystick.*",
+			"src/egl_context.*",
+			"src/glx_context.*",
+			"src/osmesa_context.*",
+			"src/platform.*",
+			"src/posix_module.*",
+            "src/posix_poll.*",
+			"src/posix_thread.*",
+			"src/posix_time.*",
+--            "src/wl_init.*",
+--            "src/wl_monitor.*",
+--            "src/wl_window.*",
+			"src/x11_init.*",
+			"src/x11_monitor.*",
+			"src/x11_platform.*",
+			"src/x11_window.*",
+			"src/xkb_unicode.*"
 		}
 
 		defines { 
 			"_GLFW_X11",
+            --"_GLFW_WAYLAND",
 			"_CRT_SECURE_NO_WARNINGS"
 		}
 
